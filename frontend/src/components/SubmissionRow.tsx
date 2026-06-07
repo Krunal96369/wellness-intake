@@ -52,11 +52,6 @@ export function SubmissionRow({
         boxShadow: tokens.shadowCard,
         transition: 'background .15s',
         '&:hover': { bgcolor: tokens.gray050 },
-        // Delete is revealed on hover / keyboard focus; always shown where there
-        // is no hover (touch). It keeps its layout slot so the chevron never shifts.
-        '& .row-delete-btn': { opacity: 0, transition: 'opacity .15s ease' },
-        '&:hover .row-delete-btn, &:focus-within .row-delete-btn': { opacity: 1 },
-        '@media (hover: none)': { '& .row-delete-btn': { opacity: 1 } },
       }}
     >
       {/* Stretched, whole-card open button (keyboard-activatable, focus ring). */}
@@ -112,7 +107,6 @@ export function SubmissionRow({
           <StatusPill status={item.status} />
         </Box>
         <IconButton
-          className="row-delete-btn"
           aria-label={`Delete submission ${item.title}`}
           onClick={() => onDelete(item)}
           size="small"

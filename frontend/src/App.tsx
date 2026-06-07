@@ -1,27 +1,32 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import ChecklistIcon from '@mui/icons-material/Checklist';
+import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
+import SwapVertIcon from '@mui/icons-material/SwapVert';
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Typography from '@mui/material/Typography';
-import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
 import Snackbar from '@mui/material/Snackbar';
-import SwapVertIcon from '@mui/icons-material/SwapVert';
-import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
-import ChecklistIcon from '@mui/icons-material/Checklist';
-import { SubmissionRow } from './components/SubmissionRow';
-import { FormDialog } from './components/FormDialog';
-import { FilterMenu } from './components/FilterMenu';
-import { tokens } from './theme';
+import Typography from '@mui/material/Typography';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from './api/client';
+import { FilterMenu } from './components/FilterMenu';
+import { FormDialog } from './components/FormDialog';
+import { SubmissionRow } from './components/SubmissionRow';
 import {
   applyFilters,
-  hasActiveFilters,
-  DEFAULT_FILTERS,
-  SORT_OPTIONS,
   DATE_OPTIONS,
+  DEFAULT_FILTERS,
+  hasActiveFilters,
   PROGRESS_OPTIONS,
+  SORT_OPTIONS,
   type FilterState,
 } from './lib/filters';
+import { tokens } from './theme';
 import type { FormConfig, Submission, SubmissionListItem } from './types';
 
 const CONFIG_KEY = 'wellness-intake';
@@ -32,15 +37,11 @@ interface OpenState {
   isNew: boolean;
 }
 
-/** A transient snackbar message; `onUndo` makes it an undoable action toast. */
+/** A transient snackbar message. */
 interface Toast {
   message: string;
   severity: 'success' | 'error';
-  onUndo?: () => void;
 }
-
-/** How long a deleted row can be restored before the delete is committed. */
-const UNDO_WINDOW_MS = 5000;
 
 export default function App() {
   const [config, setConfig] = useState<FormConfig | null>(null);
@@ -55,9 +56,10 @@ export default function App() {
   const [busyAction, setBusyAction] = useState(false);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
-  const deleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Ids in their undo window — filtered out of any list refresh so a deferred
-  // delete doesn't momentarily reappear from the server.
+  // The row awaiting delete confirmation; the warning dialog is open while set.
+  const [confirmDelete, setConfirmDelete] = useState<SubmissionListItem | null>(null);
+  // Ids whose delete is in flight — filtered out of any list refresh so the row
+  // doesn't momentarily reappear from the server before the DELETE resolves.
   const pendingDeleteIds = useRef<Set<string>>(new Set());
 
   // Filtering and sorting are derived client-side from the full list, so the
@@ -119,43 +121,21 @@ export default function App() {
     }
   };
 
-  // Delete is optimistic + deferred: the row vanishes immediately and the API
-  // call only fires after the undo window, so "Undo" can cancel it with no
-  // backend round-trip. (The DELETE endpoint is permanent and there's no
-  // restore-with-data, so deferring is the only way to offer a real undo.)
-  const restoreRow = (item: SubmissionListItem) =>
-    setRows((rs) => (rs.some((r) => r.id === item.id) ? rs : [...rs, item]));
-
-  const commitDelete = async (item: SubmissionListItem) => {
+  // Delete is confirmed up front (warning dialog), then committed immediately:
+  // the row vanishes optimistically and the API call fires right away. On
+  // failure the row is restored. (The DELETE endpoint is permanent.)
+  const handleDelete = async (item: SubmissionListItem) => {
+    pendingDeleteIds.current.add(item.id);
+    setRows((rs) => rs.filter((r) => r.id !== item.id));
     try {
       await api.deleteSubmission(item.id);
+      setToast({ message: 'Submission deleted', severity: 'error' });
     } catch (err) {
-      restoreRow(item);
+      setRows((rs) => (rs.some((r) => r.id === item.id) ? rs : [...rs, item]));
       setListError(err instanceof Error ? err.message : 'Could not delete this submission');
     } finally {
       pendingDeleteIds.current.delete(item.id);
     }
-  };
-
-  const undoDelete = (item: SubmissionListItem) => {
-    if (deleteTimer.current) {
-      clearTimeout(deleteTimer.current);
-      deleteTimer.current = null;
-    }
-    pendingDeleteIds.current.delete(item.id);
-    restoreRow(item);
-    setToast(null);
-  };
-
-  const startDelete = (item: SubmissionListItem) => {
-    pendingDeleteIds.current.add(item.id);
-    setRows((rs) => rs.filter((r) => r.id !== item.id));
-    if (deleteTimer.current) clearTimeout(deleteTimer.current);
-    deleteTimer.current = setTimeout(() => {
-      deleteTimer.current = null;
-      void commitDelete(item);
-    }, UNDO_WINDOW_MS);
-    setToast({ message: 'Submission deleted', severity: 'error', onUndo: () => undoDelete(item) });
   };
 
   // --- Render guards ---
@@ -304,7 +284,7 @@ export default function App() {
                 key={r.id}
                 item={r}
                 onOpen={handleOpenRow}
-                onDelete={startDelete}
+                onDelete={setConfirmDelete}
                 opening={openingId === r.id}
               />
             ))}
@@ -341,23 +321,49 @@ export default function App() {
         />
       )}
 
+      {/* Destructive-action guard. Deleting is permanent, so confirm first. */}
+      <Dialog
+        open={Boolean(confirmDelete)}
+        onClose={() => setConfirmDelete(null)}
+        maxWidth="xs"
+        fullWidth
+        aria-labelledby="delete-dialog-title"
+      >
+        <DialogTitle id="delete-dialog-title" sx={{ font: "600 18px/24px 'Roboto',sans-serif" }}>
+          Delete submission?
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ color: tokens.gray600, font: "400 14px/21px 'Roboto',sans-serif" }}>
+            “{confirmDelete?.title}” will be permanently deleted. This can’t be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+          <Button variant="outlined" onClick={() => setConfirmDelete(null)}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={() => {
+              if (confirmDelete) void handleDelete(confirmDelete);
+              setConfirmDelete(null);
+            }}
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Snackbar
         open={Boolean(toast)}
-        autoHideDuration={toast?.onUndo ? UNDO_WINDOW_MS : 3000}
+        autoHideDuration={3000}
         onClose={() => setToast(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
         <Alert
           severity={toast?.severity ?? 'success'}
           variant="standard"
-          onClose={toast?.onUndo ? undefined : () => setToast(null)}
-          action={
-            toast?.onUndo ? (
-              <Button color="inherit" size="small" onClick={toast.onUndo} sx={{ fontWeight: 700 }}>
-                Undo
-              </Button>
-            ) : undefined
-          }
+          onClose={() => setToast(null)}
           sx={{
             width: '100%',
             alignItems: 'center',
