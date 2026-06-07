@@ -33,7 +33,7 @@ export function SubmissionCard({
   const subtitle =
     item.status === 'completed'
       ? 'Submitted'
-      : `Saved · step ${Math.min(item.currentStep + 1, total)} of ${total}`;
+      : `Saved · Step ${Math.min(item.currentStep + 1, total)} of ${total}`;
 
   return (
     <Box

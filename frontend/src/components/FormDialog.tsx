@@ -207,6 +207,7 @@ export function FormDialog({ config, submission, isNew, onPersisted, onClose, on
       onClose={requestClose}
       maxWidth={false}
       fullScreen={fullScreen}
+      aria-labelledby="intake-dialog-title"
       PaperProps={{
         sx: fullScreen
           ? {
@@ -223,14 +224,22 @@ export function FormDialog({ config, submission, isNew, onPersisted, onClose, on
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'flex-start', p: '22px 24px 0' }}>
         <Box sx={{ flex: 1 }}>
-          <Typography sx={{ font: "700 20px/28px 'Roboto',sans-serif", letterSpacing: '-.01em' }}>
+          <Typography
+            id="intake-dialog-title"
+            sx={{ font: "700 20px/28px 'Roboto',sans-serif", letterSpacing: '-.01em' }}
+          >
             {submission.title}
           </Typography>
           <Typography sx={{ font: "400 13px/18px 'Roboto',sans-serif", color: tokens.gray600, mt: '2px' }}>
             {config.title}
           </Typography>
         </Box>
-        <IconButton onClick={requestClose} size="small" sx={{ color: tokens.gray500 }}>
+        <IconButton
+          onClick={requestClose}
+          size="small"
+          aria-label="Close"
+          sx={{ color: tokens.gray500 }}
+        >
           <CloseIcon sx={{ fontSize: 22 }} />
         </IconButton>
       </Box>
@@ -305,13 +314,18 @@ export function FormDialog({ config, submission, isNew, onPersisted, onClose, on
       <Dialog
         open={confirmClose}
         onClose={() => setConfirmClose(false)}
+        aria-labelledby="leave-dialog-title"
+        aria-describedby="leave-dialog-desc"
         PaperProps={{ sx: { width: 380, maxWidth: '100%', borderRadius: `${tokens.radiusCard}px` } }}
       >
         <Box sx={{ p: '22px 24px' }}>
-          <Typography sx={{ font: "700 17px/24px 'Roboto',sans-serif" }}>
+          <Typography id="leave-dialog-title" sx={{ font: "700 17px/24px 'Roboto',sans-serif" }}>
             Leave without saving?
           </Typography>
-          <Typography sx={{ font: "400 14px/21px 'Roboto',sans-serif", color: tokens.gray600, mt: 1 }}>
+          <Typography
+            id="leave-dialog-desc"
+            sx={{ font: "400 14px/21px 'Roboto',sans-serif", color: tokens.gray600, mt: 1 }}
+          >
             Your changes haven’t been saved yet. You can save this as a draft and finish later.
           </Typography>
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 3 }}>
