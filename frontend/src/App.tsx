@@ -215,7 +215,7 @@ export default function App() {
               Your submissions
             </Typography>
             <Typography sx={{ font: "400 13px/18px 'Roboto',sans-serif", color: tokens.gray600, mt: '3px' }}>
-              Pick up a draft or start a new intake — your progress is saved.
+              Save as you go. Pick up where you left off.
             </Typography>
           </Box>
           <Box sx={{ ml: 'auto' }}>
