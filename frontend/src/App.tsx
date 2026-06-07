@@ -56,6 +56,10 @@ export default function App() {
   const [busyAction, setBusyAction] = useState(false);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
+  // Open is tracked separately from content so the snackbar can play its exit
+  // animation with the message/severity still mounted — clearing `toast` on
+  // close would otherwise flip the alert to its empty default mid-fade.
+  const [toastOpen, setToastOpen] = useState(false);
   // The row awaiting delete confirmation; the warning dialog is open while set.
   const [confirmDelete, setConfirmDelete] = useState<SubmissionListItem | null>(null);
   // Ids whose delete is in flight — filtered out of any list refresh so the row
@@ -66,6 +70,11 @@ export default function App() {
   // list is fetched once and never refetched when a filter changes.
   const visible = useMemo(() => applyFilters(rows, filters), [rows, filters]);
   const isErrorToast = toast?.severity === 'error';
+
+  const showToast = (t: Toast) => {
+    setToast(t);
+    setToastOpen(true);
+  };
 
   const loadConfig = useCallback(async () => {
     try {
@@ -129,7 +138,7 @@ export default function App() {
     setRows((rs) => rs.filter((r) => r.id !== item.id));
     try {
       await api.deleteSubmission(item.id);
-      setToast({ message: 'Submission deleted', severity: 'error' });
+      showToast({ message: 'Submission deleted', severity: 'error' });
     } catch (err) {
       setRows((rs) => (rs.some((r) => r.id === item.id) ? rs : [...rs, item]));
       setListError(err instanceof Error ? err.message : 'Could not delete this submission');
@@ -313,7 +322,7 @@ export default function App() {
           submission={open.submission}
           isNew={open.isNew}
           onPersisted={() => void refreshList()}
-          onToast={(message) => setToast({ message, severity: 'success' })}
+          onToast={(message) => showToast({ message, severity: 'success' })}
           onClose={() => {
             setOpen(null);
             void refreshList();
@@ -355,15 +364,18 @@ export default function App() {
       </Dialog>
 
       <Snackbar
-        open={Boolean(toast)}
+        open={toastOpen}
         autoHideDuration={3000}
-        onClose={() => setToast(null)}
+        onClose={() => setToastOpen(false)}
+        // Clear the content only after the exit animation finishes, so the alert
+        // keeps its message and color while fading out.
+        TransitionProps={{ onExited: () => setToast(null) }}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
         <Alert
           severity={toast?.severity ?? 'success'}
           variant="standard"
-          onClose={() => setToast(null)}
+          onClose={() => setToastOpen(false)}
           sx={{
             width: '100%',
             alignItems: 'center',

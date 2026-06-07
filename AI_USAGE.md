@@ -147,6 +147,13 @@ asking for the reasoning more than the code.
 > "PATCH returns 200 with the right JSON, but the next GET shows the old answers. The
 > update didn't stick. Walk me through why before you hand me a fix."
 
+> "The delete toast doesn't fade cleanly. It shrinks, I see two icons for a frame, it
+> flashes green, then it goes. Find the cause before changing anything."
+
+**A UI change, contract first**
+> "Make the delete icon visible on every row all the time, and put a warning dialog in
+> front of delete. Then replace the undo flow entirely: on confirm, delete immediately."
+
 **Review**
 > "Read submissions.ts like a PR. Where am I trusting client input? Which failures
 > return 500 when they should be 400 or 422? Be specific."
@@ -227,6 +234,18 @@ caught by "looks right." Every one needed running.
    time. I wrapped it in try/catch (and added the same check to the integrity pass) so
    a misconfigured form fails safe and says something useful instead of dumping a
    stack trace.
+
+7. **The toast flashed green and collapsed on its way out.** This one Claude
+   introduced while reworking delete (see section 9). The snackbar's open state was
+   wired straight to its content (`open={Boolean(toast)}`) and closing did
+   `setToast(null)`, so the instant auto-hide fired the content cleared *mid-fade*:
+   the alert lost its message, the icons collapsed, and `severity` fell back to its
+   `'success'` default, flashing teal-green for a frame before disappearing. I gave
+   Claude the symptom ("it shrinks, two icons, turns green, then fades") instead of a
+   fix, and the cause was structural: open-ness and content were the same piece of
+   state. The fix splits them, a separate `toastOpen` flag drives the transition, and
+   `TransitionProps.onExited` clears the content only after the fade finishes. The
+   rewrite read fine; only running it showed the seam.
 
 A couple of times it got enthusiastic and offered things I never asked for: a
 websocket layer for "live" progress, a generic plugin system for field types. I
@@ -311,10 +330,15 @@ thinking it's really after:
 - **The leave dialog offering "Save draft" right there**, plus the auto-cleanup of
   empty ghost drafts. That kind of polish only turns up once you've lived with the
   thing for a few minutes.
-- **An undoable delete.** The row vanishes right away and the API call only fires
-  after a five-second window, so "Undo" costs zero round-trips. The DELETE endpoint is
-  permanent and there's no restore-with-data, so deferring was the only honest way to
-  offer a real undo.
+- **A guarded delete.** DELETE is permanent with no restore-with-data, so I put a
+  warning dialog in front of it: the trash icon now sits visible on every row (it used
+  to fade in on hover, easy to miss), clicking it opens a "Delete submission?"
+  confirmation, and only on confirm does the row vanish and the request fire. I'd first
+  built this as an *undoable* delete instead, deferring the API call behind a
+  five-second "Undo" toast so undo cost zero round-trips. It worked, but stacking a
+  confirm dialog and a deferred-undo toast is two safety nets for one action, so I cut
+  the undo and kept the dialog as the clearer of the two. (The swap is also what
+  introduced the toast bug in section 6, bug #7.)
 - **A client-side filter and sort toolbar** (newest/oldest, date range, status) kept
   as pure functions in `lib/filters.ts` so the rules are testable and the toolbar
   stays a thin shell. For one user's data, filtering in the browser is instant; the
