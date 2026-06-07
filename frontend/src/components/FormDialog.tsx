@@ -7,6 +7,8 @@ import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import CloseIcon from '@mui/icons-material/Close';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 import { Stepper } from './Stepper';
 import { DynamicField } from './DynamicField';
 import { tokens } from '../theme';
@@ -30,6 +32,11 @@ interface Props {
 export function FormDialog({ config, submission, isNew, onPersisted, onClose, onToast }: Props) {
   const steps = config.steps;
   const lastStep = steps.length - 1;
+
+  // On phones the dialog goes full-screen so the multi-step form gets the whole
+  // viewport instead of a cramped floating card.
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [data, setData] = useState<Answers>(submission.answers ?? {});
   const [step, setStep] = useState<number>(Math.min(submission.currentStep, lastStep));
@@ -199,8 +206,18 @@ export function FormDialog({ config, submission, isNew, onPersisted, onClose, on
       open
       onClose={requestClose}
       maxWidth={false}
+      fullScreen={fullScreen}
       PaperProps={{
-        sx: { width: 560, maxWidth: '100%', borderRadius: `${tokens.radiusCard}px`, m: 2 },
+        sx: fullScreen
+          ? {
+              width: '100%',
+              maxWidth: '100%',
+              borderRadius: 0,
+              m: 0,
+              display: 'flex',
+              flexDirection: 'column',
+            }
+          : { width: 560, maxWidth: '100%', borderRadius: `${tokens.radiusCard}px`, m: 2 },
       }}
     >
       {/* Header */}
@@ -249,7 +266,15 @@ export function FormDialog({ config, submission, isNew, onPersisted, onClose, on
       </Box>
 
       {/* Footer */}
-      <Box sx={{ display: 'flex', alignItems: 'center', p: '12px 24px 22px' }}>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 1,
+          p: { xs: '12px 16px 18px', sm: '12px 24px 22px' },
+        }}
+      >
         {step > 0 && (
           <Button variant="outlined" onClick={handleBack} disabled={busy}>
             Back

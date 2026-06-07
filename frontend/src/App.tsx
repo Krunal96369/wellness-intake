@@ -1,6 +1,8 @@
 import ChecklistIcon from '@mui/icons-material/Checklist';
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
+import GridViewOutlinedIcon from '@mui/icons-material/GridViewOutlined';
 import SwapVertIcon from '@mui/icons-material/SwapVert';
+import ViewAgendaOutlinedIcon from '@mui/icons-material/ViewAgendaOutlined';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -11,11 +13,16 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 import Snackbar from '@mui/material/Snackbar';
+import { useTheme } from '@mui/material/styles';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
+import useMediaQuery from '@mui/material/useMediaQuery';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from './api/client';
 import { FilterMenu } from './components/FilterMenu';
 import { FormDialog } from './components/FormDialog';
+import { SubmissionCard } from './components/SubmissionCard';
 import { SubmissionRow } from './components/SubmissionRow';
 import {
   applyFilters,
@@ -30,6 +37,14 @@ import { tokens } from './theme';
 import type { FormConfig, Submission, SubmissionListItem } from './types';
 
 const CONFIG_KEY = 'wellness-intake';
+const VIEW_KEY = 'wellness-intake:view';
+
+type ViewMode = 'list' | 'grid';
+
+/** Read the persisted view, defaulting to list. */
+function readView(): ViewMode {
+  return localStorage.getItem(VIEW_KEY) === 'grid' ? 'grid' : 'list';
+}
 
 /** The submission currently open in the dialog. */
 interface OpenState {
@@ -52,6 +67,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  const [view, setView] = useState<ViewMode>(readView);
   const [open, setOpen] = useState<OpenState | null>(null);
   const [busyAction, setBusyAction] = useState(false);
   const [openingId, setOpeningId] = useState<string | null>(null);
@@ -70,6 +86,17 @@ export default function App() {
   // list is fetched once and never refetched when a filter changes.
   const visible = useMemo(() => applyFilters(rows, filters), [rows, filters]);
   const isErrorToast = toast?.severity === 'error';
+
+  // Below sm the grid collapses to one column, so we always fall back to the
+  // list there and hide the toggle — grid only renders on tablet/desktop.
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const gridView = view === 'grid' && !isMobile;
+
+  // Persist the user's view choice across reloads/sessions.
+  useEffect(() => {
+    localStorage.setItem(VIEW_KEY, view);
+  }, [view]);
 
   const showToast = (t: Toast) => {
     setToast(t);
@@ -215,7 +242,7 @@ export default function App() {
               Your submissions
             </Typography>
             <Typography sx={{ font: "400 13px/18px 'Roboto',sans-serif", color: tokens.gray600, mt: '3px' }}>
-              Save as you go. Pick up where you left off.
+              Save as you go. Pick up where you left off. Nothing is ever lost between visits.
             </Typography>
           </Box>
           <Box sx={{ ml: 'auto' }}>
@@ -262,11 +289,48 @@ export default function App() {
               Clear
             </Button>
           )}
+          {/* Count sits inline after the pills. On mobile it drops `ml:auto` so
+              it wraps onto the same row as the pills (keeping the toolbar to two
+              rows) instead of being pushed onto a third. */}
           <Typography
-            sx={{ ml: 'auto', font: "400 13px/18px 'Roboto',sans-serif", color: tokens.gray600 }}
+            sx={{
+              ml: { xs: 0, sm: 'auto' },
+              font: "400 13px/18px 'Roboto',sans-serif",
+              color: tokens.gray600,
+            }}
           >
             {visible.length} of {rows.length}
           </Typography>
+          {/* View toggle — same row as the filters; hidden on phones where grid
+              and list collapse to the same single column. */}
+          <ToggleButtonGroup
+            exclusive
+            size="small"
+            value={view}
+            onChange={(_e, next: ViewMode | null) => next && setView(next)}
+            aria-label="View as"
+            sx={{
+              display: { xs: 'none', sm: 'inline-flex' },
+              ml: 0.5,
+              '& .MuiToggleButton-root': {
+                px: 1,
+                border: `1px solid ${tokens.gray300}`,
+                color: tokens.gray500,
+                '&.Mui-selected': {
+                  color: tokens.teal600,
+                  bgcolor: tokens.teal050,
+                  '&:hover': { bgcolor: tokens.teal050 },
+                },
+              },
+            }}
+          >
+            <ToggleButton value="list" aria-label="List view">
+              <ViewAgendaOutlinedIcon sx={{ fontSize: 18 }} />
+            </ToggleButton>
+            <ToggleButton value="grid" aria-label="Grid view">
+              <GridViewOutlinedIcon sx={{ fontSize: 18 }} />
+            </ToggleButton>
+          </ToggleButtonGroup>
         </Box>
 
         {listError && (
@@ -286,17 +350,38 @@ export default function App() {
         {visible.length > 0 ? (
           <Box
             component="ul"
-            sx={{ listStyle: 'none', m: 0, p: 0, display: 'flex', flexDirection: 'column', gap: 1.5 }}
+            sx={
+              gridView
+                ? {
+                  listStyle: 'none',
+                  m: 0,
+                  p: 0,
+                  display: 'grid',
+                  gap: 1.5,
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+                }
+                : { listStyle: 'none', m: 0, p: 0, display: 'flex', flexDirection: 'column', gap: 1.5 }
+            }
           >
-            {visible.map((r) => (
-              <SubmissionRow
-                key={r.id}
-                item={r}
-                onOpen={handleOpenRow}
-                onDelete={setConfirmDelete}
-                opening={openingId === r.id}
-              />
-            ))}
+            {visible.map((r) =>
+              gridView ? (
+                <SubmissionCard
+                  key={r.id}
+                  item={r}
+                  onOpen={handleOpenRow}
+                  onDelete={setConfirmDelete}
+                  opening={openingId === r.id}
+                />
+              ) : (
+                <SubmissionRow
+                  key={r.id}
+                  item={r}
+                  onOpen={handleOpenRow}
+                  onDelete={setConfirmDelete}
+                  opening={openingId === r.id}
+                />
+              ),
+            )}
           </Box>
         ) : (
           <Box

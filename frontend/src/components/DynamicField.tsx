@@ -132,7 +132,7 @@ export function DynamicField({ field, value, error, onChange }: Props) {
         row
         value={(value as string) ?? ''}
         onChange={(e) => onChange(e.target.value)}
-        sx={{ gap: 3 }}
+        sx={{ flexWrap: 'wrap', columnGap: 3, rowGap: 0.5 }}
       >
         {(field.options ?? []).map((opt) => (
           <FormControlLabel
