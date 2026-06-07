@@ -1,0 +1,101 @@
+/* ============================================================
+   Wellness Intake — Color & Type Foundations
+   Material UI base, softened. Teal accent only; everything else neutral.
+   Load Roboto from Google Fonts (see fonts/README.md for self-hosting).
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+:root {
+  /* ---------- Brand / Primary (the only accent) ---------- */
+  --teal-700: #0F6055;   /* pressed / darkest */
+  --teal-600: #147D6F;   /* PRIMARY — buttons, active step, fills */
+  --teal-500: #1B8E7E;   /* hover lift on light grounds */
+  --teal-200: #8FC4BC;   /* low-emphasis text button ("Save") */
+  --teal-100: #D6E9E5;   /* selected tint, hover backgrounds */
+  --teal-050: #EAF4F2;   /* faint teal wash */
+
+  /* ---------- Neutrals (cool-leaning gray) ---------- */
+  --ink-900: #1F2937;    /* near-black headings */
+  --ink-800: #263238;    /* dialog title */
+  --gray-700: #4B5563;   /* body strong */
+  --gray-600: #6B7280;   /* secondary text, subtitles */
+  --gray-500: #9098A1;   /* placeholder, disabled label */
+  --gray-400: #B9BEC4;   /* icons, inactive step text */
+  --gray-300: #D7DBDE;   /* default input border */
+  --gray-200: #E4E7E9;   /* divider, inactive step bar */
+  --gray-150: #ECEEEF;   /* chip fill */
+  --gray-100: #F2F4F4;   /* hover row */
+  --gray-050: #F7F8F8;   /* app background (off-white) */
+  --white:    #FFFFFF;   /* cards, inputs */
+
+  /* ---------- Semantic ---------- */
+  --bg-app:       var(--gray-050);
+  --bg-card:      var(--white);
+  --bg-input:     var(--white);
+  --fg1:          var(--ink-900);   /* primary text */
+  --fg2:          var(--gray-600);  /* secondary text */
+  --fg3:          var(--gray-500);  /* placeholder / disabled */
+  --border-1:     var(--gray-300);  /* input outline */
+  --border-2:     var(--gray-200);  /* dividers, card edge */
+  --focus-ring:   var(--teal-600);
+
+  --status-draft-fg: var(--gray-600);
+  --status-draft-bg: var(--gray-150);
+  --status-done-fg:  var(--teal-600);
+  --status-done-bg:  var(--teal-100);
+
+  /* ---------- Destructive / warning ---------- */
+  --danger-600: #C2554A;  /* muted brick red — destructive text/fill */
+  --danger-700: #A8463C;  /* pressed / hover-darken */
+  --danger-100: #F6E4E1;  /* destructive tint background */
+
+  /* ---------- Radii ---------- */
+  --r-input: 8px;
+  --r-button: 8px;
+  --r-chip: 8px;     /* soft-rect chips, per mocks */
+  --r-pill: 999px;   /* status pills */
+  --r-card: 12px;
+
+  /* ---------- Elevation (faint, never heavy) ---------- */
+  --shadow-card: 0 1px 2px rgba(31, 41, 55, 0.04), 0 1px 1px rgba(31, 41, 55, 0.03);
+  --shadow-pop:  0 4px 16px rgba(31, 41, 55, 0.10);
+  --shadow-btn:  0 1px 1px rgba(15, 96, 85, 0.18);
+
+  /* ---------- Spacing scale (8pt) ---------- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+
+  /* ---------- Type ---------- */
+  --font-sans: 'Roboto', system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+
+  /* role tokens: size / line-height / weight / tracking */
+  --title-size: 20px;   --title-lh: 28px;   --title-weight: 700;
+  --subtitle-size: 13px;--subtitle-lh: 18px;--subtitle-weight: 400;
+  --step-size: 14px;    --step-lh: 20px;    --step-weight: 500;
+  --label-size: 12px;   --label-lh: 16px;   --label-weight: 400;  /* floating field label */
+  --input-size: 16px;   --input-lh: 24px;   --input-weight: 400;
+  --radio-size: 15px;   --radio-lh: 22px;   --radio-weight: 500;
+  --button-size: 14px;  --button-lh: 20px;  --button-weight: 500;
+  --chip-size: 13px;    --chip-lh: 18px;    --chip-weight: 400;
+  --pill-size: 12px;    --pill-lh: 16px;    --pill-weight: 500;
+}
+
+/* ============================================================
+   Semantic type roles — apply directly or mirror in components
+   ============================================================ */
+.ds-title    { font: var(--title-weight) var(--title-size)/var(--title-lh) var(--font-sans); color: var(--fg1); letter-spacing: -0.01em; }
+.ds-subtitle { font: var(--subtitle-weight) var(--subtitle-size)/var(--subtitle-lh) var(--font-sans); color: var(--fg2); }
+.ds-step     { font: var(--step-weight) var(--step-size)/var(--step-lh) var(--font-sans); letter-spacing: 0.01em; }
+.ds-label    { font: var(--label-weight) var(--label-size)/var(--label-lh) var(--font-sans); color: var(--fg2); }
+.ds-input    { font: var(--input-weight) var(--input-size)/var(--input-lh) var(--font-sans); color: var(--fg1); }
+.ds-radio    { font: var(--radio-weight) var(--radio-size)/var(--radio-lh) var(--font-sans); color: var(--fg1); }
+.ds-button   { font: var(--button-weight) var(--button-size)/var(--button-lh) var(--font-sans); letter-spacing: 0.01em; text-transform: none; } /* sentence case, NOT uppercase */
+.ds-chip     { font: var(--chip-weight) var(--chip-size)/var(--chip-lh) var(--font-sans); color: var(--gray-700); }
+.ds-pill     { font: var(--pill-weight) var(--pill-size)/var(--pill-lh) var(--font-sans); letter-spacing: 0.02em; }

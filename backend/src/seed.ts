@@ -5,7 +5,7 @@
  * exactly one active version per key. Run with `npm run seed`.
  */
 import 'dotenv/config';
-import mongoose from 'mongoose';
+import mongoose, { type InsertManyOptions } from 'mongoose';
 import { connectToDatabase } from './db';
 import { FormConfig } from './models/FormConfig';
 import { Submission } from './models/Submission';
@@ -13,15 +13,22 @@ import { WELLNESS_INTAKE_CONFIG } from './seedConfig';
 import { checkConfigIntegrity, countCompletedSteps } from './validation';
 import type { Answers } from './types';
 
-/** A few realistic submissions so the list view isn't empty on first run. */
+/**
+ * A few realistic submissions so the list view isn't empty on first run.
+ * `createdAt` is set explicitly to match each title so the list's sort and
+ * date-range filters operate on meaningful, spread-out timestamps rather than
+ * the (identical) moment the seed happened to run.
+ */
 const SAMPLE_SUBMISSIONS: Array<{
   title: string;
+  createdAt: Date;
   status: 'draft' | 'completed';
   currentStep: number;
   answers: Answers;
 }> = [
   {
     title: 'May 25, 2026, 1:37pm',
+    createdAt: new Date(2026, 4, 25, 13, 37),
     status: 'draft',
     currentStep: 1,
     answers: {
@@ -33,6 +40,7 @@ const SAMPLE_SUBMISSIONS: Array<{
   },
   {
     title: 'May 18, 2026, 9:02am',
+    createdAt: new Date(2026, 4, 18, 9, 2),
     status: 'completed',
     currentStep: 2,
     answers: {
@@ -48,6 +56,7 @@ const SAMPLE_SUBMISSIONS: Array<{
   },
   {
     title: 'May 11, 2026, 4:15pm',
+    createdAt: new Date(2026, 4, 11, 16, 15),
     status: 'draft',
     currentStep: 0,
     answers: { fullName: 'Priya Nair' },
@@ -82,6 +91,11 @@ async function seed() {
   const existing = await Submission.countDocuments({ userId: 'local-user' });
   if (existing === 0) {
     const totalSteps = WELLNESS_INTAKE_CONFIG.steps.length;
+
+    // Mongoose honors `timestamps: false` per-insert at runtime, but the option
+    // is absent from InsertManyOptions' type — widen it without a cast.
+    const insertOptions: InsertManyOptions & { timestamps: boolean } = { timestamps: false };
+
     await Submission.insertMany(
       SAMPLE_SUBMISSIONS.map((s) => ({
         userId: 'local-user',
@@ -97,7 +111,10 @@ async function seed() {
             ? totalSteps
             : countCompletedSteps(WELLNESS_INTAKE_CONFIG, s.answers),
         totalSteps,
+        createdAt: s.createdAt,
+        updatedAt: s.createdAt,
       })),
+      insertOptions,
     );
     console.log(`[seed] inserted ${SAMPLE_SUBMISSIONS.length} sample submissions`);
   } else {
